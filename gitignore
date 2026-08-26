@@ -1,0 +1,43 @@
+# ---------- Arduino ----------
+*.hex
+*.elf
+*.bin
+*.eep
+build/
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Arduino IDE
+*.orig
+
+# ---------- Python (integration app) ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+venv/
+.venv/
+env/
+.env
+*.log
+
+# Jupyter (if used for prototyping)
+.ipynb_checkpoints/
+
+# ---------- Operating system ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Editors/IDEs ----------
+.vscode/
+.idea/
+*.swp
+
+# ---------- Local test data ----------
+*.csv
+*.pdf
+logs/
+recordings/
