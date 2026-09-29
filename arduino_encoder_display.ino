@@ -64,8 +64,8 @@ const int encoderPinB = 9;
 const int resetButtonPin = 7;
 
 // ---------- Reel mechanical parameters ----------
-const float reelDiameterCm = 20.0;
-const float circumferenceCm = reelDiameterCm * PI; // ~62.83 cm/revolution
+const float reelDiameterCm = 6.5;
+const float circumferenceCm = reelDiameterCm * PI; // ~20.4203 cm/revolution
 const int pulsesPerRevolution = 360;
 const int quadratureFactor = 4; // full quadrature decoding = 1440 pulses/revolution
 const float cmPerPulse = circumferenceCm / (pulsesPerRevolution * quadratureFactor);

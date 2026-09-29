@@ -70,8 +70,8 @@ The encoder uses full quadrature decoding (4x), resulting in **1440 pulses per r
 ## Cable length calculation
 
 ```
-Reel circumference = π × diameter (20cm) ≈ 62.83 cm/revolution
-Resolution = Circumference / (360 × 4) ≈ 0.0436 cm/pulse (~0.436mm)
+Reel circumference = π × diameter (6.5cm) ≈ 20.4203 cm/revolution
+Resolution = Circumference / (360 × 4) ≈ 0.0141 cm/pulse (~0.141mm) 
 ```
 
 The value is displayed already converted to meters + centimeters (e.g. `3m 45.2cm`), accounting for direction of rotation (cable going down/coming up).
