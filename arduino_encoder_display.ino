@@ -1,60 +1,60 @@
 /*
-  WELL RECORD - Sistema de metragem de cabo para inspeção de poços artesianos
-  Encoder óptico E38S6G5-360B-G24N (360 PPR) acoplado a carretel de 20cm
-  + display LCD 4x20 (modo paralelo) + comunicação serial com app Python
+  WELL RECORD - Cable metering system for artesian well inspection
+  E38S6G5-360B-G24N optical encoder (360 PPR) coupled to a 6.5cm reel
+  + 4x20 LCD display (I2C serial module) + serial communication with Python app
   Arduino Uno
 
-  Funcionalidades:
-    - Calcula metragem do cabo em centímetros (considera frente/trás)
-    - Mostra no LCD: título fixo, metragem atual e tempo ligado (HH:MM:SS)
-    - Botão físico zera o contador
-    - Protocolo serial para app Python:
-        * Arduino -> PC: envia "CM:<valor>;PULSES:<valor>;TIME:<HH:MM:SS>"
-          a cada 200ms, continuamente (não só quando muda)
-        * PC -> Arduino: comando "RESET" (seguido de \n) zera o contador
-          remotamente, igual ao botão físico
+  Features:
+    - Calculates cable length in centimeters (accounts for forward/backward)
+    - LCD shows: fixed title, current length, and uptime (HH:MM:SS)
+    - Physical button resets the counter
+    - Serial protocol for the Python app:
+        * Arduino -> PC: sends "CM:<value>;PULSES:<value>;TIME:<HH:MM:SS>"
+          every 200ms, continuously (not only when it changes)
+        * PC -> Arduino: "RESET" command (followed by \n) resets the counter
+          remotely, same as the physical button
 
-  Ligações:
+  Wiring:
 
-  LCD 4x20 (modo paralelo - 4 bits):
-    RS  -> Pino 12
-    EN  -> Pino 11
-    D4  -> Pino 5
-    D5  -> Pino 4
-    D6  -> Pino 3
-    D7  -> Pino 2
-    RW  -> GND
-    VSS -> GND
-    VDD -> 5V
-    V0  -> GND (sem potenciômetro, contraste fixo no máximo)
-    A (LED+) -> 5V (via resistor ~220 ohm, se o módulo não tiver embutido)
-    K (LED-) -> GND
+  4x20 LCD with I2C serial module (PCF8574 backpack):
+    SDA -> A4
+    SCL -> A5
+    VCC -> 5V
+    GND -> GND
+    (contrast is adjusted with the trimmer on the I2C module itself)
+    (I2C address is usually 0x27 or 0x3F - see lcdI2cAddress below)
 
-  Encoder E38S6G5-360B-G24N (acoplado ao carretel de 20cm de diâmetro):
-    A   -> Pino 8
-    B   -> Pino 9
-    +   -> 5V (verificar tensão de alimentação do seu modelo)
+  E38S6G5-360B-G24N encoder (coupled to the 6.5cm diameter reel):
+    A   -> Pin 8
+    B   -> Pin 9
+    +   -> 5V (check your model's supply voltage)
     GND -> GND
 
-  Botão de zerar o contador:
-    Sinal -> Pino 7 (nível lógico 1 = pressionado)
-    GND   -> GND (via resistor pull-down externo)
+  Reset button:
+    Signal -> Pin 7 (logic level 1 = pressed)
+    GND    -> GND (via external pull-down resistor)
 
-  IMPORTANTE sobre os pinos do encoder e do botão:
-  Os pinos 8, 9 e 7 não suportam attachInterrupt() no Arduino Uno
-  (só os pinos 2 e 3 suportam interrupção externa nativa, e aqui
-  eles já estão ocupados pelo LCD). Por isso usamos Interrupção
-  por Mudança de Pino (PCINT):
-    - Encoder (pinos 8/9) -> grupo PCINT0
-    - Botão (pino 7)      -> grupo PCINT2
+  IMPORTANT about the encoder and button pins:
+  Pins 8, 9, and 7 do not support attachInterrupt() on the Arduino Uno
+  (only pins 2 and 3 support native external interrupts). The encoder and
+  button use Pin Change Interrupts (PCINT) instead:
+    - Encoder (pins 8/9) -> PCINT0 group
+    - Button (pin 7)     -> PCINT2 group
+
+  Required library: "LiquidCrystal I2C" (Frank de Brabander), installable
+  via Arduino IDE > Tools > Manage Libraries.
 */
 
-#include <LiquidCrystal.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
-// ---------- LCD pins ----------
-const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-const String display_fixed_msg = "* WELL RECORD *";
+// ---------- LCD (I2C) ----------
+// SDA = A4, SCL = A5 (fixed by hardware on the Arduino Uno)
+const uint8_t lcdI2cAddress = 0x27; // try 0x3F if the display stays blank
+LiquidCrystal_I2C lcd(lcdI2cAddress, 20, 4); // 20 columns, 4 rows
+
+// ---------- Fixed message shown on line 1 of the LCD ----------
+const char display_fixed_msg[] = "* WELL RECORD *";
 
 // ---------- Encoder pins ----------
 const int encoderPinA = 8;
@@ -93,7 +93,8 @@ void setup() {
 
   Serial.begin(115200);
 
-  lcd.begin(20, 4);
+  lcd.init();
+  lcd.backlight();
   lcd.setCursor(0, 0);
   lcd.print(display_fixed_msg);
 

@@ -1,6 +1,6 @@
 # WELL RECORD — Cable Metering System for Artesian Well Inspection
 
-Firmware for Arduino Uno that measures, in real time, the amount of cable lowered into an artesian well during camera inspection. Readings come from an optical encoder coupled to a cable reel, displayed on a 4x20 LCD, and streamed over serial for integration with an external (Python) application.
+Firmware for Arduino Uno that measures, in real time, the amount of cable lowered into an artesian well during camera inspection. Readings come from an optical encoder coupled to a cable reel, displayed on a 4x20 I2C LCD, and streamed over serial for integration with an external (Python) application.
 
 ## Overview
 
@@ -16,29 +16,23 @@ Firmware for Arduino Uno that measures, in real time, the amount of cable lowere
 |---|---|
 | Microcontroller | Arduino Uno R3 |
 | Encoder | Optical E38S6G5-360B-G24N, 360 PPR |
-| Display | 20x4 LCD, parallel mode (4-bit) |
+| Display | 20x4 LCD with I2C serial module (PCF8574 backpack) |
 | Button | Simple 2-pin push-button |
 | Resistor | ~10kΩ (external pull-down for the button) |
-| Reel | 20cm diameter (coupled 1:1 to the encoder shaft) |
+| Reel | 6.5cm diameter (coupled 1:1 to the encoder shaft) |
 
 ## Wiring
 
-### 4x20 LCD (parallel mode)
+### 4x20 LCD (I2C module)
 
-| LCD | Arduino |
+| I2C module | Arduino |
 |---|---|
-| RS | Pin 12 |
-| EN | Pin 11 |
-| D4 | Pin 5 |
-| D5 | Pin 4 |
-| D6 | Pin 3 |
-| D7 | Pin 2 |
-| RW | GND |
-| V0 | GND *(fixed contrast, no potentiometer)* |
-| VSS | GND |
-| VDD | 5V |
-| LED+ (A) | 5V (via ~220Ω resistor, if needed) |
-| LED- (K) | GND |
+| SDA | A4 |
+| SCL | A5 |
+| VCC | 5V |
+| GND | GND |
+
+> The I2C module is soldered to the back of the LCD, so only these 4 wires go to the Arduino. Contrast is adjusted with the small trimmer on the module. The default I2C address is `0x27` (some modules use `0x3F`).
 
 ### E38S6G5-360B-G24N encoder
 
@@ -60,7 +54,7 @@ Firmware for Arduino Uno that measures, in real time, the amount of cable lowere
 
 ## Why Pin Change Interrupt (PCINT)?
 
-On the Arduino Uno, only pins **2 and 3** support native external interrupts (`attachInterrupt`). Since those pins are already used by the LCD, both the encoder (pins 8/9) and the button (pin 7) rely on **Pin Change Interrupts (PCINT)**:
+On the Arduino Uno, only pins **2 and 3** support native external interrupts (`attachInterrupt`). The encoder (pins 8/9) and the button (pin 7) are wired to other pins, so they rely on **Pin Change Interrupts (PCINT)**:
 
 - Encoder → `PCINT0` group (pins 8-13)
 - Button → `PCINT2` group (pins 0-7)
@@ -71,7 +65,7 @@ The encoder uses full quadrature decoding (4x), resulting in **1440 pulses per r
 
 ```
 Reel circumference = π × diameter (6.5cm) ≈ 20.4203 cm/revolution
-Resolution = Circumference / (360 × 4) ≈ 0.0141 cm/pulse (~0.141mm) 
+Resolution = Circumference / (360 × 4) ≈ 0.0142 cm/pulse (~0.142mm)
 ```
 
 The value is displayed already converted to meters + centimeters (e.g. `3m 45.2cm`), accounting for direction of rotation (cable going down/coming up).
@@ -79,13 +73,13 @@ The value is displayed already converted to meters + centimeters (e.g. `3m 45.2c
 ## Display layout
 
 ```
-WELL RECORD
+* WELL RECORD *
                     (free line)
 3m 45.2cm
             00:12:34
 ```
 
-- Line 1: fixed title
+- Line 1: fixed title (set by the `display_fixed_msg` constant)
 - Line 3: current cable length (meters + centimeters)
 - Line 4: uptime, right-aligned (HH:MM:SS)
 
@@ -108,17 +102,19 @@ The Python app can read the serial port continuously and convert `CM` to meters/
 
 ## Flashing the firmware
 
-1. Open the `.ino` file in the Arduino IDE
-2. Select **Arduino Uno** under Tools > Board
-3. Select the corresponding serial port
-4. Upload (Sketch > Upload)
-5. Open the Serial Monitor at **115200 baud** to validate the readings
+1. In the Arduino IDE, install the **LiquidCrystal I2C** library (by Frank de Brabander) via Tools > Manage Libraries
+2. Open the `.ino` file
+3. Select **Arduino Uno** under Tools > Board
+4. Select the corresponding serial port
+5. Upload (Sketch > Upload)
+6. Open the Serial Monitor at **115200 baud** to validate the readings
 
 ## Technical notes / troubleshooting
 
-- **LCD contrast without a potentiometer**: V0 wired directly to GND keeps contrast fixed at maximum. If it's unreadable, consider a resistor voltage divider instead.
+- **Blank LCD (backlight on, no text)**: first turn the contrast trimmer on the I2C module with a small screwdriver. If still blank, the I2C address is probably `0x3F` instead of `0x27` — change `lcdI2cAddress` in the code, or run an I2C scanner sketch to find the real address.
+- **LCD not responding at all**: check that SDA is on A4 and SCL on A5 (not swapped).
 - **Decimal number formatting on AVR**: `sprintf`/`snprintf` with `%f` are not reliable on the Arduino Uno (the AVR libc does not include floating-point support by default). The firmware uses `dtostrf()` for this conversion instead.
-- **Calibration**: if the actual reel diameter differs from 20cm, adjust the `reelDiameterCm` constant at the top of the code.
+- **Calibration**: if the actual reel diameter differs from 6.5cm, adjust the `reelDiameterCm` constant at the top of the code.
 - **Reversed direction**: if forward/backward feels swapped, invert the increment/decrement cases inside `ISR(PCINT0_vect)`.
 
 ## Possible next steps
